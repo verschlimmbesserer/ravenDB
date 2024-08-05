@@ -1,0 +1,12 @@
+---
+
+- name: Start ravendb
+  ansible.builtin.systemd:
+    name: ravendb
+    enabled: true
+    state: started
+
+- name: Restart ravendb
+  ansible.builtin.systemd:
+    name: ravendb
+    state: restarted

@@ -1,0 +1,14 @@
+---
+
+- name: Install dotnet repo on ubuntu
+  ansible.builtin.apt:
+    deb: "{{ dotnet_deb_repo_pkg }}"
+  when: ansible_distribution == 'Ubuntu'
+
+- name: Install net core runtime
+  ansible.builtin.apt:
+    name: "{{ dotnet_pkgs }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'

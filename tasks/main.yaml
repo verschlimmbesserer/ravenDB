@@ -1,0 +1,7 @@
+---
+
+- name: Install dot net
+  ansible.builtin.import_tasks: "install_dotnet.yml"
+
+- name: Install RavenDB
+  ansible.builtin.import_tasks: "install_ravendb.yml"

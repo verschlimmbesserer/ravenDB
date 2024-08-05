@@ -1,0 +1,68 @@
+---
+
+- name: Check for existens of {{ ravendb_install_dir + '/RavenDB'}}
+  ansible.builtin.stat:
+    path: "{{ ravendb_install_dir }}/RavenDB"
+  register: ravendb
+
+- name: Check if RavenDB Archive exists on System
+  ansible.builtin.stat:
+    path: "/var/tmp/ravendb_{{ ravendb_version }}.tar.bz2"
+  register: ravendb_pkg
+
+- name: Download ravenDB
+  ansible.builtin.get_url:
+    url: "{{ ravendb_download_url }}"
+    dest: "/var/tmp/ravendb_{{ ravendb_version }}.tar.bz2"
+    mode: "0755"
+    owner: root
+    group: root
+  register: ravendb_downloaded
+  when: not ravendb_pkg.stat.exists
+
+- name: Stop RavenDB
+  ansible.builtin.systemd:
+    name: ravendb
+    state: stopped
+  when: ravendb.stat.exists and ravendb_downloaded is changed
+  register: ravendb_stopped
+
+- name: Remove RavenDB for upgrade
+  ansible.builtin.file:
+    path: "{{ ravendb_install_dir }}/RavenDB"
+    state: absent
+  when: ravendb.stat.exists and ravendb_downloaded is changed and ravendb_stopped is changed
+
+- name: Unpack ravenDB
+  ansible.builtin.unarchive:
+    src: "/var/tmp/ravendb_{{ ravendb_version }}.tar.bz2"
+    dest: "{{ ravendb_install_dir }}"
+    remote_src: true
+    mode: "0755"
+    owner: root
+    group: root
+  when: ravendb_downloaded is changed
+
+- name: Deploy ravendb config
+  ansible.builtin.template:
+    src: ravendb_settings.json.j2
+    dest: "{{ ravendb_install_dir }}/RavenDB/Server/settings.json"
+    mode: "0755"
+    owner: root
+    group: root
+  notify: Restart ravendb
+
+- name: Deploy ravendb.service file
+  ansible.builtin.template:
+    src: ravendb.service.j2
+    dest: /etc/systemd/system/ravendb.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: ravendbservice
+
+- name: Reload systemctl daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: ravendbservice is changed
+  notify: Start ravendb
